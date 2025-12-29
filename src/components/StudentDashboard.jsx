@@ -2,39 +2,94 @@ import React from 'react';
 import { 
   User, BookOpen, CreditCard, Printer, 
   FileText, Download, CheckSquare, MessageSquare, 
-  LogOut, Home
+  LogOut, Home, AlertTriangle
 } from 'lucide-react';
 
-// 1. UPDATED: Accept 'onHostelClick' as a prop
-export default function StudentDashboard({ onLogout, student, onHostelClick }) {
+export default function StudentDashboard({ 
+    onLogout, 
+    student, 
+    onHostelClick, 
+    onGrievanceClick, 
+    onDetailsClick,
+    onOpenModal // Generic handler for other modals (exams, results, etc.)
+}) {
   
   const studentName = student?.full_name || "UNKNOWN STUDENT";
   const studentId = student?.registration_number || "-------";
   const branchInfo = student ? `${student.course} - ${student.branch}` : "N/A";
 
   const menuItems = [
-    { title: "Student Details", icon: <User />, color: "text-cyan-400", border: "border-cyan-400" },
-    { title: "Exam Registration", icon: <BookOpen />, color: "text-green-400", border: "border-green-400" },
-    { title: "Challan Generation", icon: <CreditCard />, color: "text-blue-400", border: "border-blue-400" },
-    { title: "Challan Payment", icon: <CreditCard />, color: "text-yellow-400", border: "border-yellow-400" },
-    
-    { title: "Payment Status", icon: <FileText />, color: "text-cyan-400", border: "border-cyan-400" },
-    { title: "Print Receipt", icon: <Printer />, color: "text-red-400", border: "border-red-400" },
-    { title: "Download Hall-Ticket", icon: <Download />, color: "text-blue-400", border: "border-blue-400" },
-    { title: "Results", icon: <CheckSquare />, color: "text-green-400", border: "border-green-400" },
-    
-    // 2. UPDATED: Link the Hostel button to the action prop
+    // 1. UPDATED: Triggers the 3D Bio-Scan Modal
     { 
-      title: "Hostel", 
+        title: "Bio-Data Scan", 
+        icon: <User />, 
+        color: "text-cyan-400", 
+        border: "border-cyan-400",
+        action: onDetailsClick 
+    },
+    
+    // 2. Generic Modals
+    { 
+        title: "Exam Registration", 
+        icon: <BookOpen />, 
+        color: "text-green-400", 
+        border: "border-green-400",
+        action: () => onOpenModal && onOpenModal('exam')
+    },
+    
+    // 3. Placeholders
+    { title: "Challan Generation", icon: <CreditCard />, color: "text-blue-400", border: "border-blue-400" },
+    
+    // 4. UPDATED: Triggers Payment History Table
+    { 
+        title: "Payment History", 
+        icon: <FileText />, 
+        color: "text-yellow-400", 
+        border: "border-yellow-400",
+        action: () => onOpenModal && onOpenModal('payment_history')
+    },
+    
+    { title: "Tuition Fees", icon: <FileText />, color: "text-cyan-400", border: "border-cyan-400" },
+    { title: "Print Receipt", icon: <Printer />, color: "text-red-400", border: "border-red-400" },
+    
+    // 7. Generic Modals
+    { 
+        title: "Download Hall-Ticket", 
+        icon: <Download />, 
+        color: "text-blue-400", 
+        border: "border-blue-400",
+        action: () => onOpenModal && onOpenModal('hall_ticket')
+    },
+    
+    { 
+        title: "Academic Results", 
+        icon: <CheckSquare />, 
+        color: "text-green-400", 
+        border: "border-green-400",
+        action: () => onOpenModal && onOpenModal('results')
+    },
+    
+    // 9. Hostel Action
+    { 
+      title: "Hostel Status", 
       icon: <Home />, 
       color: "text-green-400", 
       border: "border-green-400",
-      action: onHostelClick // <--- This links to the function passed from parent
+      action: onHostelClick 
     },
     
-    { title: "Tuition Fees", icon: <FileText />, color: "text-yellow-400", border: "border-yellow-400" },
-    { title: "Check Backlog Subjects", icon: <BookOpen />, color: "text-green-400", border: "border-green-400" },
-    { title: "Feedback for Faculty", icon: <MessageSquare />, color: "text-red-400", border: "border-red-400" },
+    { title: "Backlog Subjects", icon: <BookOpen />, color: "text-green-400", border: "border-green-400" },
+    
+    // 11. UPDATED: Triggers Grievance Terminal
+    { 
+        title: "Grievance Terminal", 
+        icon: <AlertTriangle />, 
+        color: "text-red-400", 
+        border: "border-red-400",
+        action: onGrievanceClick 
+    },
+    
+    { title: "General Feedback", icon: <MessageSquare />, color: "text-yellow-400", border: "border-yellow-400" },
   ];
 
   return (
@@ -71,12 +126,12 @@ export default function StudentDashboard({ onLogout, student, onHostelClick }) {
         {menuItems.map((item, index) => (
           <button
             key={index}
-            // 3. UPDATED: Check for action property or default behavior
             onClick={() => {
                 if (item.action) {
-                    item.action(); // Triggers onHostelClick()
-                } else if (item.title === "Student Details") {
-                    alert(`FULL DETAILS:\nName: ${studentName}\nPhone: ${student?.phone_number || 'N/A'}\nFather: ${student?.father_name || 'N/A'}`);
+                    item.action();
+                } else {
+                    // Fallback for unconnected buttons
+                    alert("MODULE OFFLINE :: CONNECTING...");
                 }
             }}
             className={`

@@ -6,8 +6,12 @@ import StudentDashboard from '../components/StudentDashboard';
 import HostelPanel from '../components/HostelPanel';
 import Scene3D from '../components/Scene3D';
 import AdminLogin from '../components/AdminLogin'; 
-// 1. IMPORT ADMIN DASHBOARD
 import AdminDashboard from '../components/AdminDashboard';
+// import TerminalModal from '../components/TerminalModal'; 
+
+// --- NEW IMPORTS ---
+// import GrievanceModal from '../components/GrievanceModal';
+import StudentDetailsModal from '../components/StudentDetailsModal';
 
 const WELCOME_LOGS = [
   ">> Welcome to [COLLEGE NAME] Terminal Access.",
@@ -19,6 +23,11 @@ const WELCOME_LOGS = [
 export default function TerminalHome() {
   const [view, setView] = useState('home'); 
   const [studentData, setStudentData] = useState(null);
+  
+  // Controls which modal is open: 'payment_history', 'grievance', 'details_3d', etc.
+  const [activeModal, setActiveModal] = useState(null); 
+  const [paymentHistory, setPaymentHistory] = useState([]); 
+  
   const { displayedText } = useTypewriter(WELCOME_LOGS, 30);
 
   // --- SESSION HANDLING ---
@@ -40,7 +49,6 @@ export default function TerminalHome() {
   }, []);
 
   const checkUserRole = async (user) => {
-    // Simple Admin Check: Is the email 'admin@college.edu.in'?
     if (user.email === 'admin@college.edu.in') {
         setView('admin_dashboard');
     } else {
@@ -67,14 +75,109 @@ export default function TerminalHome() {
     }
   };
 
+  // --- Fetch Payments Logic ---
+  const fetchPayments = async () => {
+    if (!studentData) return;
+    const { data } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('student_id', studentData.id)
+        .order('date_of_transaction', { ascending: false });
+    setPaymentHistory(data || []);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setView('home');
   };
 
+  // --- GENERIC MODAL CONTENT (For simple tables/messages) ---
+  const renderGenericModalContent = () => {
+    switch (activeModal) {
+        case 'payment_history':
+            if (paymentHistory.length === 0) fetchPayments();
+            return (
+                <div className="w-full">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-terminal/20 text-terminal sticky top-0">
+                            <tr>
+                                <th className="p-2 border-b border-terminal">TXN ID</th>
+                                <th className="p-2 border-b border-terminal">DATE</th>
+                                <th className="p-2 border-b border-terminal">AMT</th>
+                                <th className="p-2 border-b border-terminal">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paymentHistory.map(pay => (
+                                <tr key={pay.id} className="border-b border-terminal/20 hover:bg-white/5">
+                                    <td className="p-2 font-mono text-xs">{pay.transaction_id}</td>
+                                    <td className="p-2 text-xs">{new Date(pay.date_of_transaction).toLocaleDateString()}</td>
+                                    <td className="p-2">₹{pay.amount}</td>
+                                    <td className={`p-2 font-bold text-xs ${pay.status === 'Success' ? 'text-green-400' : 'text-red-400'}`}>
+                                        {pay.status.toUpperCase()}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {paymentHistory.length === 0 && <div className="p-4 text-center opacity-50">NO RECORDS FOUND</div>}
+                </div>
+            );
+
+        case 'hall_ticket':
+        case 'results':
+        case 'exam':
+            return (
+                <div className="text-center py-12">
+                    <div className="animate-spin text-4xl mb-4 text-terminal">⟳</div>
+                    <div className="text-xl animate-pulse tracking-widest">ACCESSING EXAM SERVER...</div>
+                    <p className="opacity-50 text-sm mt-2">Verifying Clearance Status</p>
+                </div>
+            );
+
+        // Note: 'details' and 'grievance' are handled by specific components now, 
+        // so they don't need cases here unless you want a fallback.
+        default:
+            return (
+                <div className="text-center py-10 border border-red-500/50 bg-red-900/10">
+                    <h3 className="text-red-500 text-xl font-bold mb-2">MODULE OFFLINE</h3>
+                    <p className="opacity-70">This feature is currently under maintenance by IT Cell.</p>
+                    <p className="text-xs mt-4 opacity-50">ERR_CODE: 503_SERVICE_UNAVAILABLE</p>
+                </div>
+            );
+    }
+  };
+
   return (
     <CRTWrapper>
       
+      {/* 1. GENERIC TERMINAL MODAL (For simple lists like Payments) */}
+      {['payment_history', 'hall_ticket', 'results', 'exam'].includes(activeModal) && (
+        <TerminalModal 
+            title={`SYSTEM :: ${activeModal?.toUpperCase().replace('_', ' ')}`} 
+            onClose={() => setActiveModal(null)}
+        >
+            {renderGenericModalContent()}
+        </TerminalModal>
+      )}
+
+      {/* 2. CUSTOM GRIEVANCE MODAL */}
+      {activeModal === 'grievance' && (
+        <GrievanceModal 
+            student={studentData} 
+            onClose={() => setActiveModal(null)} 
+        />
+      )}
+
+      {/* 3. CUSTOM 3D BIO-SCAN MODAL */}
+      {activeModal === 'details_3d' && (
+        <StudentDetailsModal 
+            student={studentData} 
+            onClose={() => setActiveModal(null)} 
+        />
+      )}
+
+      {/* HEADER */}
       <header className="flex justify-between items-end border-b-4 double border-terminal pb-2 mb-4 shrink-0 relative z-10">
         <h1 className="text-5xl uppercase tracking-widest">COLLEGE NAME</h1>
         <nav className="space-x-4 text-xl">
@@ -88,7 +191,7 @@ export default function TerminalHome() {
 
       <div className="flex flex-1 overflow-hidden relative z-10">
         
-        {/* SIDEBAR: Show on Home, Login, or Admin Login */}
+        {/* SIDEBAR */}
         {(view === 'home' || view === 'login' || view === 'admin_login') && (
           <aside className="w-72 border-r-2 border-terminal pt-5 flex flex-col gap-4 shrink-0">
             {['About Us', 'Departments', 'Library', 'News & Events'].map((item) => (
@@ -96,14 +199,10 @@ export default function TerminalHome() {
                 &gt; [ {item} ]
               </button>
             ))}
-            
             <div className="border-t border-terminal/30 my-2"></div>
-            
             <button onClick={() => setView('login')} className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">
               &gt; [ Student Portal ]
             </button>
-            
-            {/* ADMIN BUTTON */}
             <button onClick={() => setView('admin_login')} className="text-left text-2xl text-red-400 hover:bg-red-500 hover:text-black px-2 transition-all mt-4">
               &gt; [ ADMIN ACCESS ]
             </button>
@@ -114,31 +213,29 @@ export default function TerminalHome() {
           
           {view === 'home' && (
             <div>
-              {displayedText.map((line, i) => (
-                <div key={i} className="mb-2">{line}</div>
-              ))}
+              {displayedText.map((line, i) => <div key={i} className="mb-2">{line}</div>)}
               <span className="inline-block w-3 h-6 bg-terminal animate-blink align-sub"/>
             </div>
           )}
 
-          {view === 'login' && (
-            <LoginPanel onBack={() => setView('home')} />
-          )}
-
-          {view === 'admin_login' && (
-            <AdminLogin onBack={() => setView('home')} />
-          )}
-
-          {/* 2. REPLACED PLACEHOLDER WITH ACTUAL DASHBOARD */}
-          {view === 'admin_dashboard' && (
-            <AdminDashboard onLogout={handleLogout} />
-          )}
+          {view === 'login' && <LoginPanel onBack={() => setView('home')} />}
+          {view === 'admin_login' && <AdminLogin onBack={() => setView('home')} />}
+          {view === 'admin_dashboard' && <AdminDashboard onLogout={handleLogout} />}
 
           {view === 'dashboard' && (
             <StudentDashboard 
                 student={studentData} 
                 onLogout={handleLogout} 
+                
+                // Navigation Actions
                 onHostelClick={() => setView('hostel_status')}
+                
+                // Modal Actions (Updated to trigger new features)
+                onGrievanceClick={() => setActiveModal('grievance')}
+                onDetailsClick={() => setActiveModal('details_3d')}
+                
+                // Catch-all for other menu items (like Exam/Payments)
+                onOpenModal={(type) => setActiveModal(type)} 
             />
           )}
 
@@ -176,7 +273,7 @@ export default function TerminalHome() {
   );
 }
 
-// --- KEEP YOUR EXISTING LoginPanel & RetroInput HERE ---
+// --- KEEP LoginPanel and RetroInput UNCHANGED BELOW ---
 function LoginPanel({ onBack }) {
   const [regNo, setRegNo] = useState('');
   const [password, setPassword] = useState('');
