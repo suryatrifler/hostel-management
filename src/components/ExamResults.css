@@ -1,0 +1,255 @@
+/* src/components/ExamResults.css */
+
+.exam-root {
+  position: fixed;
+  inset: 0;
+  background: black;
+  font-family: 'Consolas', monospace;
+  color: white;
+  overflow: hidden;
+  user-select: none;
+}
+
+.scene {
+  width: 100%;
+  height: 100%;
+  perspective: 1200px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default; 
+}
+
+/* =========================================
+   LEFT SIDE: MARKSHEET
+   ========================================= */
+.marksheet-container {
+  position: absolute;
+  left: 5%; 
+  top: 50%;
+  transform: translateY(-50%);
+  width: 480px; 
+  height: 650px;
+  z-index: 20;
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.official-doc {
+  background: rgba(10, 14, 18, 0.96); 
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 
+    0 0 60px rgba(0, 0, 0, 0.9),
+    inset 0 0 50px rgba(0, 240, 255, 0.05);
+  color: #00f0ff;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(12px);
+  position: relative;
+  border-radius: 4px;
+}
+
+/* Header */
+.doc-header {
+  border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(90deg, rgba(0,240,255,0.1), transparent);
+}
+
+/* Info Grid */
+.student-info-grid {
+  padding: 20px;
+  font-size: 11px;
+  color: rgba(0, 240, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 12px;
+}
+.info-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0, 240, 255, 0.1); padding-bottom: 4px; }
+.info-val { color: white; font-weight: bold; letter-spacing: 0.5px; }
+
+/* Table */
+.table-wrapper { flex: 1; overflow-y: auto; padding: 0; }
+.results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.results-table thead { position: sticky; top: 0; background: rgba(5, 10, 15, 1); z-index: 5; border-bottom: 1px solid rgba(0, 240, 255, 0.3); }
+.results-table th { text-align: left; padding: 12px 15px; color: rgba(0, 240, 255, 0.8); font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+.results-table td { padding: 12px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.9); }
+.results-table tr:hover { background: rgba(0, 240, 255, 0.1); }
+
+/* Footer */
+.footer-summary {
+  height: 80px; /* Slightly taller for button */
+  border-top: 1px solid rgba(0, 240, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(0, 240, 255, 0.05);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Print Button Styling */
+.print-btn {
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  padding: 8px 16px;
+  font-family: 'Consolas', monospace;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.print-btn:hover {
+  background: #00f0ff;
+  color: black;
+  box-shadow: 0 0 15px #00f0ff;
+}
+
+/* Tech Decor */
+.corner-tl { position: absolute; top: -1px; left: -1px; width: 10px; height: 10px; border-top: 2px solid #00f0ff; border-left: 2px solid #00f0ff; }
+.corner-br { position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border-bottom: 2px solid #00f0ff; border-right: 2px solid #00f0ff; }
+
+
+/* =========================================
+   RIGHT SIDE: 3D STACK
+   ========================================= */
+.depth-tunnel {
+  position: relative;
+  width: 200px;
+  height: 120px;
+  margin-left: 35vw; 
+  transform-style: preserve-3d;
+  transform: rotateY(-25deg) rotateX(5deg);
+}
+
+.cartridge-wrapper {
+  --x: 0px; --y: 0px; --z: 0px;
+  position: absolute; top: 50%; left: 0; width: 200px; height: 110px;
+  transform-style: preserve-3d; transform-origin: center center;
+  transform: translateY(calc(-50% + var(--y))) translateX(var(--x)) translateZ(var(--z));
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 1; cursor: pointer;
+}
+
+.cartridge-visual {
+  width: 100%; height: 100%;
+  background: rgba(10, 15, 20, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.5); /* Brighter Border */
+  
+  /* INCREASED IDLE GLOW */
+  box-shadow: 
+    0 0 25px rgba(0, 240, 255, 0.3),  /* Stronger outer glow */
+    inset 0 0 30px rgba(0, 240, 255, 0.1); /* Deeper inner glow */
+    
+  backdrop-filter: blur(5px);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 12px 15px;
+  transition: all 0.3s ease-out;
+  opacity: 0.9; /* High visibility by default */
+}
+
+/* Hover/Active */
+.cartridge-wrapper:hover .cartridge-visual, 
+.cartridge-wrapper.active .cartridge-visual {
+  transform: translateY(-30px) scale(1.15);
+  border-color: #00f0ff;
+  background: rgba(5, 40, 50, 0.95);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.9), 0 0 40px rgba(0, 240, 255, 0.6);
+  opacity: 1;
+}
+
+/* NEIGHBORS STAY VISIBLE */
+.cartridge-wrapper.dimmed .cartridge-visual {
+  opacity: 0.7; /* Kept high so they don't disappear */
+  filter: blur(0.5px); /* Very slight blur for depth */
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); /* Keep some glow */
+}
+
+.cartridge-header { display: flex; justify-content: space-between; align-items: center; }
+.cartridge-visual h3 { font-size: 14px; color: #ccc; margin: 0; }
+.status-light { width: 6px; height: 6px; background: #444; border-radius: 50%; box-shadow: 0 0 2px black; }
+.cartridge-wrapper.active .status-light { background: #00f0ff; box-shadow: 0 0 8px #00f0ff; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.2); border-radius: 2px; }
+
+/* =========================================
+   PRINT STYLES (PDF Generation)
+   ========================================= */
+@media print {
+  body * {
+    visibility: hidden; /* Hide everything */
+  }
+  
+  .marksheet-container, 
+  .marksheet-container * {
+    visibility: visible; /* Show only marksheet */
+  }
+
+  .marksheet-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    transform: none;
+  }
+
+  .official-doc {
+    background: white; /* Print on white paper */
+    color: black;
+    box-shadow: none;
+    border: 2px solid black;
+  }
+
+  .doc-header {
+    background: #f0f0f0;
+    color: black;
+    border-bottom: 2px solid black;
+  }
+
+  .student-info-grid {
+    color: black;
+    background: white;
+    border-bottom: 1px solid black;
+  }
+  .info-val, .info-label { color: black !important; }
+  .info-row { border-bottom: 1px solid #ddd; }
+
+  .results-table th {
+    color: black;
+    border: 1px solid black;
+  }
+  .results-table td {
+    color: black;
+    border: 1px solid black;
+  }
+
+  .footer-summary {
+    background: white;
+    color: black;
+    border-top: 2px solid black;
+  }
+  
+  /* Hide UI elements */
+  .corner-tl, .corner-br, .print-btn, button {
+    display: none !important;
+  }
+  
+  /* Hide scrollbars */
+  .table-wrapper {
+    overflow: visible;
+  }
+}

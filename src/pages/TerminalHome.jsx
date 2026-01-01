@@ -9,9 +9,11 @@ import AdminLogin from '../components/AdminLogin';
 import AdminDashboard from '../components/AdminDashboard';
 // import TerminalModal from '../components/TerminalModal'; 
 
-// --- NEW IMPORTS ---
-// import GrievanceModal from '../components/GrievanceModal';
+// --- IMPORTS ---
+// import GrievanceModal from '../components/GrievanceModal'; // Restored
 import StudentDetailsModal from '../components/StudentDetailsModal';
+import ExamResults from '../components/ExamResults'; 
+import BacklogModal from '../components/BacklogModal';
 
 const WELCOME_LOGS = [
   ">> Welcome to [COLLEGE NAME] Terminal Access.",
@@ -24,7 +26,7 @@ export default function TerminalHome() {
   const [view, setView] = useState('home'); 
   const [studentData, setStudentData] = useState(null);
   
-  // Controls which modal is open: 'payment_history', 'grievance', 'details_3d', etc.
+  // Controls which modal is open
   const [activeModal, setActiveModal] = useState(null); 
   const [paymentHistory, setPaymentHistory] = useState([]); 
   
@@ -91,7 +93,7 @@ export default function TerminalHome() {
     setView('home');
   };
 
-  // --- GENERIC MODAL CONTENT (For simple tables/messages) ---
+  // --- GENERIC MODAL CONTENT ---
   const renderGenericModalContent = () => {
     switch (activeModal) {
         case 'payment_history':
@@ -127,16 +129,16 @@ export default function TerminalHome() {
         case 'hall_ticket':
         case 'results':
         case 'exam':
+        case 'payment': 
+        case 'challan_gen': // New Case for Challan Generation
             return (
                 <div className="text-center py-12">
                     <div className="animate-spin text-4xl mb-4 text-terminal">⟳</div>
-                    <div className="text-xl animate-pulse tracking-widest">ACCESSING EXAM SERVER...</div>
-                    <p className="opacity-50 text-sm mt-2">Verifying Clearance Status</p>
+                    <div className="text-xl animate-pulse tracking-widest">CONNECTING TO BANK SERVER...</div>
+                    <p className="opacity-50 text-sm mt-2">Verifying Student Credentials</p>
                 </div>
             );
 
-        // Note: 'details' and 'grievance' are handled by specific components now, 
-        // so they don't need cases here unless you want a fallback.
         default:
             return (
                 <div className="text-center py-10 border border-red-500/50 bg-red-900/10">
@@ -151,8 +153,8 @@ export default function TerminalHome() {
   return (
     <CRTWrapper>
       
-      {/* 1. GENERIC TERMINAL MODAL (For simple lists like Payments) */}
-      {['payment_history', 'hall_ticket', 'results', 'exam'].includes(activeModal) && (
+      {/* 1. GENERIC TERMINAL MODAL (Payment/Exam/Challan/History) */}
+      {['payment_history', 'hall_ticket', 'results', 'exam', 'payment', 'challan_gen'].includes(activeModal) && (
         <TerminalModal 
             title={`SYSTEM :: ${activeModal?.toUpperCase().replace('_', ' ')}`} 
             onClose={() => setActiveModal(null)}
@@ -161,20 +163,15 @@ export default function TerminalHome() {
         </TerminalModal>
       )}
 
-      {/* 2. CUSTOM GRIEVANCE MODAL */}
-      {activeModal === 'grievance' && (
-        <GrievanceModal 
-            student={studentData} 
-            onClose={() => setActiveModal(null)} 
-        />
-      )}
-
-      {/* 3. CUSTOM 3D BIO-SCAN MODAL */}
+      {/* 2. CUSTOM MODALS */}
       {activeModal === 'details_3d' && (
-        <StudentDetailsModal 
-            student={studentData} 
-            onClose={() => setActiveModal(null)} 
-        />
+        <StudentDetailsModal student={studentData} onClose={() => setActiveModal(null)} />
+      )}
+      {activeModal === 'backlogs' && (
+        <BacklogModal onClose={() => setActiveModal(null)} student={studentData} />
+      )}
+      {activeModal === 'grievance' && (
+        <GrievanceModal student={studentData} onClose={() => setActiveModal(null)} />
       )}
 
       {/* HEADER */}
@@ -229,14 +226,22 @@ export default function TerminalHome() {
                 
                 // Navigation Actions
                 onHostelClick={() => setView('hostel_status')}
+                onResultsClick={() => setView('exam_results')}
                 
-                // Modal Actions (Updated to trigger new features)
-                onGrievanceClick={() => setActiveModal('grievance')}
+                // Modal Actions
                 onDetailsClick={() => setActiveModal('details_3d')}
-                
-                // Catch-all for other menu items (like Exam/Payments)
+                onGrievanceClick={() => setActiveModal('grievance')} // New Action
+
+                // Catch-all 
                 onOpenModal={(type) => setActiveModal(type)} 
             />
+          )}
+
+          {/* EXAM RESULTS VIEW */}
+          {view === 'exam_results' && (
+             <div className="absolute inset-0 z-50">
+                <ExamResults onBack={() => setView('dashboard')} />
+             </div>
           )}
 
           {view === 'hostel_status' && (
@@ -269,11 +274,12 @@ export default function TerminalHome() {
 
         </main>
       </div>
+
     </CRTWrapper>
   );
 }
 
-// --- KEEP LoginPanel and RetroInput UNCHANGED BELOW ---
+// --- LOGIN COMPONENTS ---
 function LoginPanel({ onBack }) {
   const [regNo, setRegNo] = useState('');
   const [password, setPassword] = useState('');

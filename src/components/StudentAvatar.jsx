@@ -4,7 +4,7 @@ import { OrbitControls, Stars, useGLTF, ContactShadows } from '@react-three/drei
 import * as THREE from 'three';
 
 // CONFIG
-const BASE_Y = 0;
+const BASE_Y = -2.5;
 const SCALE = 2.4;
 const CAMERA_POS = [0, 0, 8];
 const MODEL_X = -2.5; 

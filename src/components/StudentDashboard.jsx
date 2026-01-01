@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   User, BookOpen, CreditCard, Printer, 
-  FileText, Download, CheckSquare, MessageSquare, 
+  FileText, Download, CheckSquare, 
   LogOut, Home, AlertTriangle
 } from 'lucide-react';
 
@@ -9,9 +9,10 @@ export default function StudentDashboard({
     onLogout, 
     student, 
     onHostelClick, 
-    onGrievanceClick, 
     onDetailsClick,
-    onOpenModal // Generic handler for other modals (exams, results, etc.)
+    onResultsClick,
+    onOpenModal,
+    onGrievanceClick // Added this prop back
 }) {
   
   const studentName = student?.full_name || "UNKNOWN STUDENT";
@@ -19,7 +20,7 @@ export default function StudentDashboard({
   const branchInfo = student ? `${student.course} - ${student.branch}` : "N/A";
 
   const menuItems = [
-    // 1. UPDATED: Triggers the 3D Bio-Scan Modal
+    // ROW 1
     { 
         title: "Bio-Data Scan", 
         icon: <User />, 
@@ -27,8 +28,22 @@ export default function StudentDashboard({
         border: "border-cyan-400",
         action: onDetailsClick 
     },
+    { 
+        title: "Academic Results", 
+        icon: <CheckSquare />, 
+        color: "text-green-400", 
+        border: "border-green-400",
+        action: onResultsClick 
+    },
+    { 
+        title: "Backlog Subjects", 
+        icon: <BookOpen />, 
+        color: "text-red-400", 
+        border: "border-red-400",
+        action: () => onOpenModal && onOpenModal('backlogs') 
+    },
     
-    // 2. Generic Modals
+    // ROW 2
     { 
         title: "Exam Registration", 
         icon: <BookOpen />, 
@@ -36,23 +51,6 @@ export default function StudentDashboard({
         border: "border-green-400",
         action: () => onOpenModal && onOpenModal('exam')
     },
-    
-    // 3. Placeholders
-    { title: "Challan Generation", icon: <CreditCard />, color: "text-blue-400", border: "border-blue-400" },
-    
-    // 4. UPDATED: Triggers Payment History Table
-    { 
-        title: "Payment History", 
-        icon: <FileText />, 
-        color: "text-yellow-400", 
-        border: "border-yellow-400",
-        action: () => onOpenModal && onOpenModal('payment_history')
-    },
-    
-    { title: "Tuition Fees", icon: <FileText />, color: "text-cyan-400", border: "border-cyan-400" },
-    { title: "Print Receipt", icon: <Printer />, color: "text-red-400", border: "border-red-400" },
-    
-    // 7. Generic Modals
     { 
         title: "Download Hall-Ticket", 
         icon: <Download />, 
@@ -60,16 +58,6 @@ export default function StudentDashboard({
         border: "border-blue-400",
         action: () => onOpenModal && onOpenModal('hall_ticket')
     },
-    
-    { 
-        title: "Academic Results", 
-        icon: <CheckSquare />, 
-        color: "text-green-400", 
-        border: "border-green-400",
-        action: () => onOpenModal && onOpenModal('results')
-    },
-    
-    // 9. Hostel Action
     { 
       title: "Hostel Status", 
       icon: <Home />, 
@@ -77,26 +65,47 @@ export default function StudentDashboard({
       border: "border-green-400",
       action: onHostelClick 
     },
-    
-    { title: "Backlog Subjects", icon: <BookOpen />, color: "text-green-400", border: "border-green-400" },
-    
-    // 11. UPDATED: Triggers Grievance Terminal
+
+    // ROW 3
+    { 
+        title: "Challan Generation", 
+        icon: <FileText />, 
+        color: "text-blue-400", 
+        border: "border-blue-400",
+        action: () => onOpenModal && onOpenModal('challan_gen')
+    },
+    { 
+        title: "Challan Payment", 
+        icon: <CreditCard />, 
+        color: "text-blue-400", 
+        border: "border-blue-400",
+        action: () => onOpenModal && onOpenModal('payment')
+    },
+    { 
+        title: "Payment Status", 
+        icon: <FileText />, 
+        color: "text-yellow-400", 
+        border: "border-yellow-400",
+        action: () => onOpenModal && onOpenModal('payment_history')
+    },
+
+    // ROW 4
     { 
         title: "Grievance Terminal", 
         icon: <AlertTriangle />, 
         color: "text-red-400", 
         border: "border-red-400",
-        action: onGrievanceClick 
+        action: onGrievanceClick
     },
-    
-    { title: "General Feedback", icon: <MessageSquare />, color: "text-yellow-400", border: "border-yellow-400" },
+    { title: "Tuition Fees", icon: <FileText />, color: "text-cyan-400", border: "border-cyan-400" },
+    { title: "Print Receipt", icon: <Printer />, color: "text-red-400", border: "border-red-400" },
   ];
 
   return (
-    <div className="w-full h-full flex flex-col animate-[slideIn_0.5s_ease-out]">
+    <div className="w-full h-full flex flex-col animate-[slideIn_0.5s_ease-out] overflow-hidden">
       
       {/* Command Strip */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-terminal/10 border-y-2 border-terminal p-3 mb-6 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-terminal/10 border-y-2 border-terminal p-3 mb-4 gap-4 shrink-0">
         
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 bg-terminal animate-pulse"></span>
@@ -122,7 +131,8 @@ export default function StudentDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-y-auto pr-2 pb-10 custom-scrollbar">
+      {/* Grid Container - 3x4 Layout */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-2">
         {menuItems.map((item, index) => (
           <button
             key={index}
@@ -130,28 +140,28 @@ export default function StudentDashboard({
                 if (item.action) {
                     item.action();
                 } else {
-                    // Fallback for unconnected buttons
                     alert("MODULE OFFLINE :: CONNECTING...");
                 }
             }}
             className={`
-              relative group flex flex-col items-center justify-center p-6 h-32
+              relative group flex flex-col items-center justify-center p-2 h-full w-full
               border ${item.border} ${item.color}
               bg-black/40 hover:bg-white/5 transition-all duration-200
-              hover:shadow-[0_0_15px_currentColor] hover:-translate-y-1
+              hover:shadow-[0_0_15px_currentColor]
               backdrop-blur-sm
             `}
           >
+            {/* Corner Decor */}
             <div className={`absolute top-0 left-0 w-1 h-1 border-t border-l ${item.border}`} />
             <div className={`absolute top-0 right-0 w-1 h-1 border-t border-r ${item.border}`} />
             <div className={`absolute bottom-0 left-0 w-1 h-1 border-b border-l ${item.border}`} />
             <div className={`absolute bottom-0 right-0 w-1 h-1 border-b border-r ${item.border}`} />
 
-            <div className="mb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-              {item.icon}
+            <div className="mb-2 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 duration-200">
+              {React.cloneElement(item.icon, { size: 24 })}
             </div>
 
-            <span className="text-lg font-vt323 tracking-wide uppercase text-center leading-tight opacity-90 group-hover:opacity-100">
+            <span className="text-base font-vt323 tracking-wide uppercase text-center leading-tight opacity-90 group-hover:opacity-100">
               {item.title}
             </span>
           </button>
