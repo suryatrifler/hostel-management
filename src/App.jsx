@@ -1,9 +1,12 @@
-import TerminalHome from './pages/TerminalHome'
+import React from 'react';
+import TerminalHome from './pages/TerminalHome';
 
 function App() {
   return (
-    <TerminalHome />
-  )
+    <div className="w-full h-screen bg-black">
+      <TerminalHome />
+    </div>
+  );
 }
 
-export default App
+export default App;

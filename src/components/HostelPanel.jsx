@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import BookingLoader from './BookingLoader'; // Make sure you created this file!
-import { Home, User, Wrench, AlertTriangle, ArrowRight, UserCircle, Phone, Mail, FileText, MapPin, Users } from 'lucide-react';
+import BookingLoader from './BookingLoader'; 
+import { Home, User, Wrench, AlertTriangle, ArrowRight, UserCircle, Phone, Mail, FileText, MapPin, UserX } from 'lucide-react';
 
 export default function HostelPanel({ student, onBookNow, onBack }) {
   const [roomDetails, setRoomDetails] = useState(null);
   const [roommate, setRoommate] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isInitializing, setIsInitializing] = useState(false); // Controls the Loader
+  const [isInitializing, setIsInitializing] = useState(false); 
 
   useEffect(() => {
     if (student?.room_id) {
@@ -19,6 +19,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
 
   const fetchRoomData = async () => {
     try {
+      // 1. Fetch Room Details
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select(`*, hostel_blocks ( name, type )`)
@@ -28,12 +29,14 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
       if (roomError) throw roomError;
       setRoomDetails(room);
 
+      // 2. Fetch Roommate
+      // LOGIC FIX: Exclude self using registration_number (Primary Key)
       const { data: roommateData } = await supabase
         .from('students')
         .select('full_name, registration_number, branch, course')
         .eq('room_id', student.room_id)
-        .neq('id', student.id)
-        .single();
+        .neq('registration_number', student.registration_number) 
+        .maybeSingle(); // Returns null safely if no result
 
       if (roommateData) setRoommate(roommateData);
 
@@ -44,7 +47,9 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
     }
   };
 
-  if (loading) return <div className="text-terminal animate-pulse">&gt;&gt; ACCESSING HOUSING DATABASE...</div>;
+  // Safety Check prevents crash if data isn't ready
+  if (!student) return <div className="p-10 text-red-500 font-mono text-center">ERROR: STUDENT PROFILE NOT LOADED</div>;
+  if (loading) return <div className="text-terminal animate-pulse p-10 font-mono">&gt;&gt; ACCESSING HOUSING DATABASE...</div>;
 
   const StudentProfileCard = () => (
     <div className="border border-terminal bg-black/60 p-6 relative h-full flex flex-col group hover:bg-white/5 transition-colors">
@@ -63,7 +68,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
 
             <div className="space-y-4 pt-2">
                 <DetailRow icon={<FileText size={16}/>} label="ACADEMIC" value={`${student.course} - ${student.branch}`} />
-                <DetailRow icon={<Users size={16}/>} label="FATHER'S NAME" value={student.father_name || "NOT RECORDED"} />
+                <DetailRow icon={<div className="w-4"><User size={16}/></div>} label="FATHER'S NAME" value={student.father_name || "NOT RECORDED"} />
                 <DetailRow icon={<Phone size={16}/>} label="CONTACT" value={student.phone_number || "NOT RECORDED"} />
                 <DetailRow icon={<Mail size={16}/>} label="EMAIL" value={student.email || "NOT RECORDED"} />
                 <DetailRow icon={<MapPin size={16}/>} label="ADDRESS" value={student.address || "NOT RECORDED"} />
@@ -106,7 +111,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
       {!student?.room_id ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full overflow-y-auto pb-4 custom-scrollbar">
             
-            {/* Left: Student Profile (Always Visible) */}
+            {/* Left: Student Profile */}
             <StudentProfileCard />
 
             {/* Right: Action Panel */}
@@ -121,7 +126,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
                 </p>
 
                 <button 
-                    onClick={() => setIsInitializing(true)} // Triggers the Loader
+                    onClick={() => setIsInitializing(true)} 
                     className="group relative inline-flex items-center gap-3 px-8 py-4 bg-terminal text-black font-bold text-xl hover:bg-white transition-all shadow-[0_0_20px_rgba(255,176,0,0.3)]"
                 >
                     <span>INITIALIZE BOOKING</span>
@@ -138,7 +143,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
                 <div className="border border-terminal bg-black/60 p-6 relative group h-full hover:bg-white/5 transition-colors">
                     <div className="absolute top-0 right-0 bg-terminal text-black px-2 font-bold text-sm">BLOCK INFO</div>
                     <div className="space-y-6 mt-2">
-                        <InfoRow label="BLOCK NAME" value={roomDetails?.hostel_blocks?.name} />
+                        <InfoRow label="BLOCK NAME" value={roomDetails?.hostel_blocks?.name || "LOADING..."} />
                         <InfoRow label="ROOM NUMBER" value={roomDetails?.room_number} size="text-5xl text-yellow-400" />
                         <InfoRow label="FLOOR LEVEL" value={`LEVEL 0${roomDetails?.floor_number}`} />
                         <div className="pt-4 border-t border-terminal/30 mt-auto">
@@ -150,7 +155,7 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
                 </div>
             </div>
 
-            {/* COL 2: Student Profile (Reusable Component) */}
+            {/* COL 2: Student Profile */}
             <StudentProfileCard />
 
             {/* COL 3: Co-Tenant Info */}
@@ -177,9 +182,16 @@ export default function HostelPanel({ student, onBookNow, onBack }) {
                                 </div>
                             </>
                         ) : (
-                            <div className="text-terminal/40 italic flex flex-col items-center">
-                                <User className="w-16 h-16 mb-2 opacity-20" />
-                                <span>Room is under-occupied.</span>
+                            // --- EMPTY STATE ---
+                            <div className="flex flex-col items-center justify-center text-center opacity-60 h-full border-2 border-dashed border-terminal/20 p-4 w-full">
+                                <UserX className="w-16 h-16 mb-4 text-terminal/30" />
+                                <div className="text-xl font-vt323 text-terminal/80 tracking-widest">NO CO-TENANT</div>
+                                <div className="text-[10px] font-mono text-terminal/50 mt-2 bg-terminal/10 px-2 py-1 rounded">
+                                    DATABASE QUERY: NULL
+                                </div>
+                                <div className="mt-4 text-xs text-terminal/40 max-w-[150px]">
+                                    System could not fetch any active resident record linked to this room ID.
+                                </div>
                             </div>
                         )}
                     </div>
@@ -200,7 +212,7 @@ function InfoRow({ label, value, size = "text-xl" }) {
     return (
         <div>
             <div className="text-xs opacity-50 tracking-widest mb-1">{label}</div>
-            <div className={`font-bold font-vt323 ${size}`}>{value}</div>
+            <div className={`font-bold font-vt323 ${size}`}>{value || "---"}</div>
         </div>
     );
 }

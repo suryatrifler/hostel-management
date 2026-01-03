@@ -1,67 +1,97 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 import { ChevronLeft, FileText, Lock, Activity, ShieldCheck, Printer } from "lucide-react";
 import "./ExamResults.css";
 
-const SEMESTER_DATA = [
-  { 
-    id: 1, label: "SEM_01", title: "1ST SEMESTER", date: "JAN 2024", 
-    status: "CLEARED", sgpa: "8.1", cgpa: "8.1",
-    subjects: [{ name: "ENG MATH I", grade: "A", points: 8 }]
-  },
-  { 
-    id: 2, label: "SEM_02", title: "2ND SEMESTER", date: "MAY 2024", 
-    status: "CLEARED", sgpa: "8.4", cgpa: "8.25",
-    subjects: [{ name: "DATA STRUCTURES", grade: "O", points: 10 }]
-  },
-  { 
-    id: 3, label: "SEM_03", title: "3RD SEMESTER (2-1)", date: "JAN 2025", 
-    status: "CLEARED", sgpa: "8.2", cgpa: "8.23",
-    subjects: [
-        { name: "DISCRETE MATH", grade: "B+", points: 7 },
-        { name: "COMPUTER ARCHITECTURE", grade: "A", points: 8 },
-        { name: "OPERATING SYSTEMS", grade: "A+", points: 9 },
-        { name: "OOP THROUGH JAVA", grade: "A", points: 8 },
-    ]
-  },
-  { 
-    id: 4, label: "SEM_04", title: "4TH SEMESTER (2-2)", date: "MAY 2025", 
-    status: "CLEARED", sgpa: "8.5", cgpa: "8.3",
-    subjects: [{ name: "DBMS", grade: "O", points: 10 }]
-  },
-  { 
-    id: 5, label: "SEM_05", title: "5TH SEMESTER (3-1)", date: "DEC 2025", 
-    status: "LOCKED", sgpa: "--", cgpa: "--", subjects: []
-  },
-  { 
-    id: 6, label: "SEM_06", title: "6TH SEMESTER (3-2)", date: "MAY 2026", 
-    status: "LOCKED", sgpa: "--", cgpa: "--", subjects: []
-  },
-  { 
-    id: 7, label: "SEM_07", title: "7TH SEMESTER (4-1)", date: "DEC 2026", 
-    status: "LOCKED", sgpa: "--", cgpa: "--", subjects: []
-  },
-  { 
-    id: 8, label: "SEM_08", title: "8TH SEMESTER (4-2)", date: "MAY 2027", 
-    status: "LOCKED", sgpa: "--", cgpa: "--", subjects: []
-  }
-];
-
-export default function ExamResults({ onBack }) {
+export default function ExamResults({ onBack, student }) {
   const [activeId, setActiveId] = useState(null);
   const [hoverId, setHoverId] = useState(null);
+  const [resultsData, setResultsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. FETCH DATA FROM SUPABASE
+  useEffect(() => {
+    if (student) fetchResults();
+  }, [student]);
+
+  const fetchResults = async () => {
+    try {
+      // Step A: Fetch The Headers (Exam Results)
+      const { data: results, error: rError } = await supabase
+        .from('exam_results')
+        .select('*')
+        .eq('student_reg_no', student.registration_number)
+        .order('semester', { ascending: true });
+
+      if (rError) throw rError;
+
+      // Step B: For each result, fetch the Subject Scores + Subject Names
+      // We use Promise.all to fetch details for all semesters in parallel
+      const detailedResults = await Promise.all(results.map(async (res) => {
+         const { data: scores, error: sError } = await supabase
+            .from('exam_subject_scores')
+            .select(`
+                grade, 
+                grade_points, 
+                subjects ( name ) 
+            `)
+            .eq('result_id', res.id);
+         
+         if (sError) throw sError;
+
+         // Transform data to match UI structure
+         return {
+            id: res.id,
+            label: res.semester_label,
+            title: `SEMESTER ${res.semester}`,
+            date: res.created_at ? new Date(res.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
+            status: res.result_status,
+            sgpa: res.sgpa,
+            cgpa: res.cgpa,
+            subjects: scores.map(s => ({
+                name: s.subjects?.name || "UNKNOWN SUBJECT",
+                grade: s.grade,
+                points: s.grade_points
+            }))
+         };
+      }));
+
+      // Step C: Pad with "Locked" semesters (up to 8) for the visual effect
+      const finalData = [...detailedResults];
+      const currentSemCount = detailedResults.length;
+      
+      for(let i = currentSemCount + 1; i <= 8; i++) {
+          finalData.push({
+             id: `locked-${i}`,
+             label: `SEM_0${i}`,
+             title: `${i}TH SEMESTER`,
+             date: "FUTURE",
+             status: "LOCKED",
+             sgpa: "--",
+             cgpa: "--",
+             subjects: []
+          });
+      }
+
+      setResultsData(finalData);
+    } catch (err) {
+        console.error("Error fetching results:", err);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleBackgroundClick = () => setActiveId(null);
   const handleCartridgeClick = (e, id) => {
     e.stopPropagation(); 
+    // Prevent clicking locked items
+    if(String(id).startsWith('locked')) return;
     if (activeId === id) setActiveId(null); else setActiveId(id);
   };
 
-  // --- PRINT HANDLER ---
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  // --- PHYSICS ENGINE ---
+  // --- PHYSICS ENGINE (Style Logic) ---
   const getWrapperStyle = (index, id) => {
     const Z_DIST = 140;   
     const Y_STAGGER = -30; 
@@ -71,25 +101,13 @@ export default function ExamResults({ onBack }) {
     let xBase = index * 10; 
 
     if (hoverId !== null) {
-        const hoverIndex = SEMESTER_DATA.findIndex(s => s.id === hoverId);
-        
-        if (index === hoverIndex) {
-            zBase += 100;
-        } 
-        else if (index < hoverIndex) {
-            zBase += 220; 
-            yBase += 40; 
-        } 
-        else if (index > hoverIndex) {
-            // Push deep but keep them visible
-            zBase -= 220; 
-            yBase -= 40;
-        }
+        const hoverIndex = resultsData.findIndex(s => s.id === hoverId);
+        if (index === hoverIndex) { zBase += 100; } 
+        else if (index < hoverIndex) { zBase += 220; yBase += 40; } 
+        else if (index > hoverIndex) { zBase -= 220; yBase -= 40; }
     }
 
-    if (activeId === id && !hoverId) {
-         zBase += 100;
-    }
+    if (activeId === id && !hoverId) { zBase += 100; }
 
     return {
         "--x": `${xBase}px`,
@@ -99,7 +117,9 @@ export default function ExamResults({ onBack }) {
     };
   };
 
-  const activeData = SEMESTER_DATA.find(s => s.id === activeId);
+  if (loading) return <div className="bg-black text-cyan-500 font-vt323 h-screen w-screen flex items-center justify-center text-3xl animate-pulse">DECRYPTING ACADEMIC RECORDS...</div>;
+
+  const activeData = resultsData.find(s => s.id === activeId);
 
   return (
     <div className="exam-root">
@@ -115,7 +135,7 @@ export default function ExamResults({ onBack }) {
           <ChevronLeft size={16} /> <span className="text-[10px] font-mono">TERMINAL</span>
         </button>
 
-        {/* --- LEFT SIDE: SCI-FI MARKSHEET --- */}
+        {/* --- LEFT SIDE: MARKSHEET --- */}
         <div 
             className={`marksheet-container ${activeId ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}
             onClick={(e) => e.stopPropagation()} 
@@ -133,9 +153,9 @@ export default function ExamResults({ onBack }) {
                   </div>
 
                   <div className="student-info-grid">
-                      <div className="info-row"><span>NAME</span> <span className="info-val">SAMIREDDI SURYA BHAGAVAN</span></div>
-                      <div className="info-row"><span>REG NO</span> <span className="info-val">323107311044</span></div>
-                      <div className="info-row"><span>COURSE</span> <span className="info-val">B.TECH + M.TECH</span></div>
+                      <div className="info-row"><span>NAME</span> <span className="info-val">{student?.full_name}</span></div>
+                      <div className="info-row"><span>REG NO</span> <span className="info-val">{student?.registration_number}</span></div>
+                      <div className="info-row"><span>COURSE</span> <span className="info-val">{student?.course}</span></div>
                   </div>
 
                   <div className="table-wrapper custom-scrollbar">
@@ -151,30 +171,21 @@ export default function ExamResults({ onBack }) {
                               {activeData?.subjects.map((sub, idx) => (
                                   <tr key={idx}>
                                       <td>{sub.name}</td>
-                                      <td style={{color: sub.grade === 'F' ? '#ff3333' : 'white', fontWeight: 'bold'}}>{sub.grade}</td>
+                                      <td style={{color: ['F', 'AB', 'ABSENT'].includes(sub.grade) ? '#ff3333' : 'white', fontWeight: 'bold'}}>{sub.grade}</td>
                                       <td>{sub.points}</td>
                                   </tr>
                               ))}
                               {activeData?.subjects.length === 0 && (
-                                  <tr>
-                                      <td colSpan="3" className="text-center py-12 text-cyan-500/40 italic">
-                                          <Lock className="inline mb-2" size={16} /> <br/> DATA ENCRYPTED
-                                      </td>
-                                  </tr>
+                                  <tr><td colSpan="3" className="text-center py-12 text-cyan-500/40 italic"><Lock className="inline mb-2" size={16} /> <br/> DATA ENCRYPTED</td></tr>
                               )}
                           </tbody>
                       </table>
                   </div>
 
-                  {/* Footer with Print Button */}
                   <div className="footer-summary">
                       <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2 text-cyan-500/60"><ShieldCheck size={14}/> VERIFIED</div>
-                          
-                          {/* NEW PRINT BUTTON */}
-                          <button onClick={handlePrint} className="print-btn">
-                              <Printer size={14} /> <span>Print Record</span>
-                          </button>
+                          <button onClick={handlePrint} className="print-btn"><Printer size={14} /> <span>Print Record</span></button>
                       </div>
 
                       <div className="flex gap-6">
@@ -193,10 +204,10 @@ export default function ExamResults({ onBack }) {
 
         {/* --- RIGHT SIDE: 3D STACK --- */}
         <div className="depth-tunnel">
-            {SEMESTER_DATA.map((sem, i) => (
+            {resultsData.map((sem, i) => (
                 <div
                   key={sem.id}
-                  className={`cartridge-wrapper ${activeId === sem.id ? "active" : ""} ${hoverId !== null && hoverId !== sem.id ? "dimmed" : ""}`}
+                  className={`cartridge-wrapper ${activeId === sem.id ? "active" : ""} ${hoverId !== null && hoverId !== sem.id ? "dimmed" : ""} ${sem.status === 'LOCKED' ? 'locked-item opacity-50 grayscale' : ''}`}
                   style={getWrapperStyle(i, sem.id)}
                   onMouseEnter={() => setHoverId(sem.id)}
                   onMouseLeave={() => setHoverId(null)}
@@ -205,11 +216,11 @@ export default function ExamResults({ onBack }) {
                   <div className="cartridge-visual">
                       <div className="cartridge-header">
                         <span className="text-[9px] text-cyan-500/60 font-mono">{sem.label}</span>
-                        <div className="status-light"></div>
+                        <div className={`status-light ${sem.status === 'LOCKED' ? 'bg-red-900' : 'bg-green-400'}`}></div>
                       </div>
                       <h3 style={{fontSize: '14px', color: '#ccc'}}>{sem.date}</h3>
                       <div className="flex justify-between items-end mt-auto">
-                         <FileText size={14} className="text-white/20" />
+                         {sem.status === 'LOCKED' ? <Lock size={14} className="text-red-500/50" /> : <FileText size={14} className="text-white/20" />}
                       </div>
                   </div>
                 </div>

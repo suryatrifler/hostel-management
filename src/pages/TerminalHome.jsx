@@ -9,8 +9,14 @@ import AdminLogin from '../components/AdminLogin';
 import AdminDashboard from '../components/AdminDashboard';
 // import TerminalModal from '../components/TerminalModal'; 
 
-// --- IMPORTS ---
-// import GrievanceModal from '../components/GrievanceModal'; // Restored
+// --- NEW MODULES ---
+import ChallanManager from '../components/ChallanManager';
+import ExamRegistration from '../components/ExamRegistration';
+import TuitionFees from '../components/TuitionFees';
+import ChallanGenerationModal from '../components/ChallanGenerationModal'; // <--- NEW IMPORT
+
+// --- EXISTING MODULES ---
+import GrievanceModal from '../components/GrievanceModal';
 import StudentDetailsModal from '../components/StudentDetailsModal';
 import ExamResults from '../components/ExamResults'; 
 import BacklogModal from '../components/BacklogModal';
@@ -26,8 +32,11 @@ export default function TerminalHome() {
   const [view, setView] = useState('home'); 
   const [studentData, setStudentData] = useState(null);
   
-  // Controls which modal is open
+  // Modal State
   const [activeModal, setActiveModal] = useState(null); 
+  
+  // Payment Context (The core data for Challan Manager)
+  const [paymentContext, setPaymentContext] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]); 
   
   const { displayedText } = useTypewriter(WELCOME_LOGS, 30);
@@ -63,12 +72,13 @@ export default function TerminalHome() {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('id', userId)
+        .eq('auth_user_id', userId)
         .single();
 
       if (data) {
         setStudentData(data);
-        if (view === 'home' || view === 'login' || view === 'admin_login') {
+        // Only redirect if not already inside a specific view
+        if (['home', 'login', 'admin_login'].includes(view)) {
             setView('dashboard');
         }
       }
@@ -77,14 +87,13 @@ export default function TerminalHome() {
     }
   };
 
-  // --- Fetch Payments Logic ---
   const fetchPayments = async () => {
     if (!studentData) return;
     const { data } = await supabase
         .from('payments')
         .select('*')
-        .eq('student_id', studentData.id)
-        .order('date_of_transaction', { ascending: false });
+        .eq('student_reg_no', studentData.registration_number) 
+        .order('created_at', { ascending: false });
     setPaymentHistory(data || []);
   };
 
@@ -93,7 +102,16 @@ export default function TerminalHome() {
     setView('home');
   };
 
-  // --- GENERIC MODAL CONTENT ---
+  // --- HANDLER: Initiate Payment Flow ---
+  const handlePaymentInitiated = (ctx) => {
+      setActiveModal(null); // Close any open modal (e.g., ExamReg)
+      setPaymentContext(ctx); // Set the payment data
+      setView('challan_system'); // Switch view to Challan Manager
+  };
+
+  // --- RENDERERS ---
+
+  // Generic content for simple modals like History / Hall Ticket
   const renderGenericModalContent = () => {
     switch (activeModal) {
         case 'payment_history':
@@ -103,20 +121,20 @@ export default function TerminalHome() {
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-terminal/20 text-terminal sticky top-0">
                             <tr>
-                                <th className="p-2 border-b border-terminal">TXN ID</th>
-                                <th className="p-2 border-b border-terminal">DATE</th>
+                                <th className="p-2 border-b border-terminal">CHALLAN</th>
+                                <th className="p-2 border-b border-terminal">TYPE</th>
                                 <th className="p-2 border-b border-terminal">AMT</th>
                                 <th className="p-2 border-b border-terminal">STATUS</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paymentHistory.map(pay => (
-                                <tr key={pay.id} className="border-b border-terminal/20 hover:bg-white/5">
-                                    <td className="p-2 font-mono text-xs">{pay.transaction_id}</td>
-                                    <td className="p-2 text-xs">{new Date(pay.date_of_transaction).toLocaleDateString()}</td>
+                                <tr key={pay.challan_no} className="border-b border-terminal/20 hover:bg-white/5">
+                                    <td className="p-2 font-mono text-xs">{pay.challan_no}</td>
+                                    <td className="p-2 text-xs">{pay.payment_type}</td>
                                     <td className="p-2">₹{pay.amount}</td>
-                                    <td className={`p-2 font-bold text-xs ${pay.status === 'Success' ? 'text-green-400' : 'text-red-400'}`}>
-                                        {pay.status.toUpperCase()}
+                                    <td className={`p-2 font-bold text-xs ${pay.status === 'SUCCESS' ? 'text-green-400' : 'text-red-400'}`}>
+                                        {pay.status}
                                     </td>
                                 </tr>
                             ))}
@@ -125,36 +143,24 @@ export default function TerminalHome() {
                     {paymentHistory.length === 0 && <div className="p-4 text-center opacity-50">NO RECORDS FOUND</div>}
                 </div>
             );
-
         case 'hall_ticket':
-        case 'results':
-        case 'exam':
-        case 'payment': 
-        case 'challan_gen': // New Case for Challan Generation
             return (
                 <div className="text-center py-12">
                     <div className="animate-spin text-4xl mb-4 text-terminal">⟳</div>
-                    <div className="text-xl animate-pulse tracking-widest">CONNECTING TO BANK SERVER...</div>
-                    <p className="opacity-50 text-sm mt-2">Verifying Student Credentials</p>
+                    <div className="text-xl animate-pulse tracking-widest">FETCHING HALL TICKET...</div>
+                    <p className="opacity-50 text-sm mt-2">Checking Clearance Status</p>
                 </div>
             );
-
         default:
-            return (
-                <div className="text-center py-10 border border-red-500/50 bg-red-900/10">
-                    <h3 className="text-red-500 text-xl font-bold mb-2">MODULE OFFLINE</h3>
-                    <p className="opacity-70">This feature is currently under maintenance by IT Cell.</p>
-                    <p className="text-xs mt-4 opacity-50">ERR_CODE: 503_SERVICE_UNAVAILABLE</p>
-                </div>
-            );
+            return <div className="p-4 text-center">MODULE LOADING...</div>;
     }
   };
 
   return (
     <CRTWrapper>
       
-      {/* 1. GENERIC TERMINAL MODAL (Payment/Exam/Challan/History) */}
-      {['payment_history', 'hall_ticket', 'results', 'exam', 'payment', 'challan_gen'].includes(activeModal) && (
+      {/* 1. GENERIC MODALS */}
+      {['payment_history', 'hall_ticket'].includes(activeModal) && (
         <TerminalModal 
             title={`SYSTEM :: ${activeModal?.toUpperCase().replace('_', ' ')}`} 
             onClose={() => setActiveModal(null)}
@@ -163,25 +169,50 @@ export default function TerminalHome() {
         </TerminalModal>
       )}
 
-      {/* 2. CUSTOM MODALS */}
-      {activeModal === 'details_3d' && (
-        <StudentDetailsModal student={studentData} onClose={() => setActiveModal(null)} />
+      {/* 2. FEATURE MODALS */}
+      {activeModal === 'details_3d' && <StudentDetailsModal student={studentData} onClose={() => setActiveModal(null)} />}
+      {activeModal === 'backlogs' && <BacklogModal onClose={() => setActiveModal(null)} student={studentData} />}
+      {activeModal === 'grievance' && <GrievanceModal student={studentData} onClose={() => setActiveModal(null)} />}
+
+      {/* 3. PAYMENT FLOW MODALS */}
+      
+      {/* A. Exam Registration (Step 1: Select Subjects & Save) */}
+      {activeModal === 'exam_reg' && (
+          <ExamRegistration 
+              student={studentData} 
+              onBack={() => setActiveModal(null)}
+              // Note: We don't pay directly from here anymore, we save and tell user to go to Challan Gen
+          />
       )}
-      {activeModal === 'backlogs' && (
-        <BacklogModal onClose={() => setActiveModal(null)} student={studentData} />
+
+      {/* B. Tuition Fees (Step 1: Acknowledge Dues) */}
+      {activeModal === 'tuition' && (
+          <TuitionFees 
+              student={studentData} 
+              onBack={() => setActiveModal(null)} 
+              onProceedToPay={() => {
+                  setActiveModal('challan_gen'); // Redirect to Challan Hub
+              }}
+          />
       )}
-      {activeModal === 'grievance' && (
-        <GrievanceModal student={studentData} onClose={() => setActiveModal(null)} />
+
+      {/* C. CHALLAN GENERATION HUB (The new smart component) */}
+      {activeModal === 'challan_gen' && (
+          <ChallanGenerationModal 
+              student={studentData}
+              onBack={() => setActiveModal(null)}
+              onProceedToPay={handlePaymentInitiated} // This sends data to ChallanManager
+          />
       )}
+
+      {/* 4. FULL PAGE VIEWS */}
 
       {/* HEADER */}
       <header className="flex justify-between items-end border-b-4 double border-terminal pb-2 mb-4 shrink-0 relative z-10">
         <h1 className="text-5xl uppercase tracking-widest">COLLEGE NAME</h1>
         <nav className="space-x-4 text-xl">
            {['HOME', 'ADMISSIONS', 'CONTACT'].map((item) => (
-             <a key={item} href="#" className="hover:bg-terminal hover:text-black hover:shadow-[0_0_10px_#ffb000] px-2 transition-all">
-               [ {item} ]
-             </a>
+             <a key={item} href="#" className="hover:bg-terminal hover:text-black hover:shadow-[0_0_10px_#ffb000] px-2 transition-all">[ {item} ]</a>
            ))}
         </nav>
       </header>
@@ -189,58 +220,62 @@ export default function TerminalHome() {
       <div className="flex flex-1 overflow-hidden relative z-10">
         
         {/* SIDEBAR */}
-        {(view === 'home' || view === 'login' || view === 'admin_login') && (
+        {['home', 'login', 'admin_login'].includes(view) && (
           <aside className="w-72 border-r-2 border-terminal pt-5 flex flex-col gap-4 shrink-0">
-            {['About Us', 'Departments', 'Library', 'News & Events'].map((item) => (
-              <button key={item} className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">
-                &gt; [ {item} ]
-              </button>
-            ))}
+            <button key="about" className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">&gt; [ About Us ]</button>
             <div className="border-t border-terminal/30 my-2"></div>
-            <button onClick={() => setView('login')} className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">
-              &gt; [ Student Portal ]
-            </button>
-            <button onClick={() => setView('admin_login')} className="text-left text-2xl text-red-400 hover:bg-red-500 hover:text-black px-2 transition-all mt-4">
-              &gt; [ ADMIN ACCESS ]
-            </button>
+            <button onClick={() => setView('login')} className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">&gt; [ Student Portal ]</button>
+            <button onClick={() => setView('admin_login')} className="text-left text-2xl text-red-400 hover:bg-red-500 hover:text-black px-2 transition-all mt-4">&gt; [ ADMIN ACCESS ]</button>
           </aside>
         )}
 
         <main className="flex-1 p-8 text-2xl relative w-full">
           
-          {view === 'home' && (
-            <div>
-              {displayedText.map((line, i) => <div key={i} className="mb-2">{line}</div>)}
-              <span className="inline-block w-3 h-6 bg-terminal animate-blink align-sub"/>
-            </div>
-          )}
-
+          {/* LOGIN / HOME */}
+          {view === 'home' && <div>{displayedText.map((line, i) => <div key={i} className="mb-2">{line}</div>)}</div>}
           {view === 'login' && <LoginPanel onBack={() => setView('home')} />}
           {view === 'admin_login' && <AdminLogin onBack={() => setView('home')} />}
           {view === 'admin_dashboard' && <AdminDashboard onLogout={handleLogout} />}
 
+          {/* MAIN DASHBOARD */}
           {view === 'dashboard' && (
             <StudentDashboard 
                 student={studentData} 
                 onLogout={handleLogout} 
                 
-                // Navigation Actions
                 onHostelClick={() => setView('hostel_status')}
                 onResultsClick={() => setView('exam_results')}
                 
-                // Modal Actions
+                // Routing Logic for Dashboard Buttons
+                onOpenModal={(type) => {
+                    // Direct mapping for simple modals
+                    setActiveModal(type);
+                }}
+                
                 onDetailsClick={() => setActiveModal('details_3d')}
-                onGrievanceClick={() => setActiveModal('grievance')} // New Action
-
-                // Catch-all 
-                onOpenModal={(type) => setActiveModal(type)} 
+                onGrievanceClick={() => setActiveModal('grievance')} 
             />
           )}
 
-          {/* EXAM RESULTS VIEW */}
+          {/* 5. CHALLAN MANAGER (The Payment Engine) */}
+          {view === 'challan_system' && paymentContext && (
+              <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md overflow-y-auto">
+                  <ChallanManager 
+                      student={studentData}
+                      paymentContext={paymentContext}
+                      onComplete={() => {
+                          fetchProfile(studentData.auth_user_id); // Refresh Data
+                          setView('dashboard'); // Return Home
+                      }}
+                      onBack={() => setView('dashboard')}
+                  />
+              </div>
+          )}
+
+          {/* SUB-PAGES */}
           {view === 'exam_results' && (
              <div className="absolute inset-0 z-50">
-                <ExamResults onBack={() => setView('dashboard')} />
+                <ExamResults onBack={() => setView('dashboard')} student={studentData} />
              </div>
           )}
 
@@ -252,20 +287,23 @@ export default function TerminalHome() {
             />
           )}
 
+          {/* HOSTEL 3D BOOKING (Direct to Payment) */}
           {view === 'booking_3d' && (
              <div className="absolute inset-0 pointer-events-auto">
                 <Scene3D 
                     student={studentData} 
-                    onComplete={() => {
-                        fetchProfile(studentData.id);
-                        setView('hostel_status');
+                    onRoomSelect={(room) => {
+                        handlePaymentInitiated({
+                            type: 'HOSTEL',
+                            amount: 15000, 
+                            metadata: { room_id: room.id, block_name: room.block_name },
+                            autoRedirect: true // Skip generation, go to payment directly
+                        });
                     }}
                 />
-                <div className="absolute top-4 left-4 z-50 animate-slideIn">
-                    <button 
-                        onClick={() => setView('hostel_status')} 
-                        className="bg-black/80 text-terminal border border-terminal px-4 py-2 hover:bg-terminal hover:text-black font-vt323 text-xl"
-                    >
+                
+                <div className="absolute top-4 left-4 z-50 animate-slideIn pointer-events-auto">
+                    <button onClick={() => setView('hostel_status')} className="bg-black/80 text-terminal border border-terminal px-4 py-2 hover:bg-terminal hover:text-black font-vt323 text-xl">
                         [ BACK ]
                     </button>
                 </div>
@@ -274,7 +312,6 @@ export default function TerminalHome() {
 
         </main>
       </div>
-
     </CRTWrapper>
   );
 }
