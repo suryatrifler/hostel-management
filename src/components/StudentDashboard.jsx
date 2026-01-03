@@ -31,16 +31,34 @@ export default function StudentDashboard({
         icon: <BookOpen />, 
         color: "text-green-400", 
         border: "border-green-400",
-        // FIX: Matches 'exam_reg' in TerminalHome
         action: () => onOpenModal && onOpenModal('exam_reg') 
     },
     { title: "Download Hall-Ticket", icon: <Download />, color: "text-blue-400", border: "border-blue-400", action: () => onOpenModal && onOpenModal('hall_ticket') },
     { title: "Hostel Status", icon: <Home />, color: "text-green-400", border: "border-green-400", action: onHostelClick },
 
     // ROW 3
-    { title: "Challan Generation", icon: <FileText />, color: "text-blue-400", border: "border-blue-400", action: () => onOpenModal && onOpenModal('challan_gen') }, // Placeholder
-    { title: "Challan Payment", icon: <CreditCard />, color: "text-blue-400", border: "border-blue-400", action: () => onOpenModal && onOpenModal('payment_history') },
-    { title: "Payment Status", icon: <FileText />, color: "text-yellow-400", border: "border-yellow-400", action: () => onOpenModal && onOpenModal('payment_history') },
+    { 
+        title: "Challan Generation", 
+        icon: <FileText />, 
+        color: "text-blue-400", 
+        border: "border-blue-400", 
+        action: () => onOpenModal && onOpenModal('challan_gen') 
+    },
+    { 
+        title: "Challan Payment", 
+        icon: <CreditCard />, 
+        color: "text-green-400", // Changed color to distinguish
+        border: "border-green-400", 
+        // FIX: Now sends 'pay_challan' instead of 'payment_history'
+        action: () => onOpenModal && onOpenModal('pay_challan') 
+    },
+    { 
+        title: "Payment Status", 
+        icon: <FileText />, 
+        color: "text-yellow-400", 
+        border: "border-yellow-400", 
+        action: () => onOpenModal && onOpenModal('payment_history') 
+    },
 
     // ROW 4
     { title: "Grievance Terminal", icon: <AlertTriangle />, color: "text-red-400", border: "border-red-400", action: onGrievanceClick },
@@ -49,7 +67,6 @@ export default function StudentDashboard({
         icon: <FileText />, 
         color: "text-cyan-400", 
         border: "border-cyan-400",
-        // FIX: Matches 'tuition' in TerminalHome
         action: () => onOpenModal && onOpenModal('tuition')
     },
     { title: "Print Receipt", icon: <Printer />, color: "text-red-400", border: "border-red-400", action: () => window.print() },

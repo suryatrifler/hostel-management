@@ -13,7 +13,7 @@ import AdminDashboard from '../components/AdminDashboard';
 import ChallanManager from '../components/ChallanManager';
 import ExamRegistration from '../components/ExamRegistration';
 import TuitionFees from '../components/TuitionFees';
-import ChallanGenerationModal from '../components/ChallanGenerationModal'; // <--- NEW IMPORT
+import ChallanGenerationModal from '../components/ChallanGenerationModal'; 
 
 // --- EXISTING MODULES ---
 import GrievanceModal from '../components/GrievanceModal';
@@ -32,16 +32,12 @@ export default function TerminalHome() {
   const [view, setView] = useState('home'); 
   const [studentData, setStudentData] = useState(null);
   
-  // Modal State
   const [activeModal, setActiveModal] = useState(null); 
-  
-  // Payment Context (The core data for Challan Manager)
   const [paymentContext, setPaymentContext] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]); 
   
   const { displayedText } = useTypewriter(WELCOME_LOGS, 30);
 
-  // --- SESSION HANDLING ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) checkUserRole(session.user);
@@ -77,7 +73,6 @@ export default function TerminalHome() {
 
       if (data) {
         setStudentData(data);
-        // Only redirect if not already inside a specific view
         if (['home', 'login', 'admin_login'].includes(view)) {
             setView('dashboard');
         }
@@ -102,23 +97,20 @@ export default function TerminalHome() {
     setView('home');
   };
 
-  // --- HANDLER: Initiate Payment Flow ---
   const handlePaymentInitiated = (ctx) => {
-      setActiveModal(null); // Close any open modal (e.g., ExamReg)
-      setPaymentContext(ctx); // Set the payment data
-      setView('challan_system'); // Switch view to Challan Manager
+      setActiveModal(null);
+      setPaymentContext(ctx); 
+      setView('challan_system'); 
   };
 
   // --- RENDERERS ---
-
-  // Generic content for simple modals like History / Hall Ticket
   const renderGenericModalContent = () => {
     switch (activeModal) {
         case 'payment_history':
             if (paymentHistory.length === 0) fetchPayments();
             return (
                 <div className="w-full">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse font-mono text-sm">
                         <thead className="bg-terminal/20 text-terminal sticky top-0">
                             <tr>
                                 <th className="p-2 border-b border-terminal">CHALLAN</th>
@@ -130,10 +122,10 @@ export default function TerminalHome() {
                         <tbody>
                             {paymentHistory.map(pay => (
                                 <tr key={pay.challan_no} className="border-b border-terminal/20 hover:bg-white/5">
-                                    <td className="p-2 font-mono text-xs">{pay.challan_no}</td>
-                                    <td className="p-2 text-xs">{pay.payment_type}</td>
+                                    <td className="p-2">{pay.challan_no}</td>
+                                    <td className="p-2">{pay.payment_type}</td>
                                     <td className="p-2">₹{pay.amount}</td>
-                                    <td className={`p-2 font-bold text-xs ${pay.status === 'SUCCESS' ? 'text-green-400' : 'text-red-400'}`}>
+                                    <td className={`p-2 font-bold ${pay.status === 'SUCCESS' ? 'text-green-400' : 'text-red-400'}`}>
                                         {pay.status}
                                     </td>
                                 </tr>
@@ -159,7 +151,6 @@ export default function TerminalHome() {
   return (
     <CRTWrapper>
       
-      {/* 1. GENERIC MODALS */}
       {['payment_history', 'hall_ticket'].includes(activeModal) && (
         <TerminalModal 
             title={`SYSTEM :: ${activeModal?.toUpperCase().replace('_', ' ')}`} 
@@ -169,43 +160,31 @@ export default function TerminalHome() {
         </TerminalModal>
       )}
 
-      {/* 2. FEATURE MODALS */}
       {activeModal === 'details_3d' && <StudentDetailsModal student={studentData} onClose={() => setActiveModal(null)} />}
       {activeModal === 'backlogs' && <BacklogModal onClose={() => setActiveModal(null)} student={studentData} />}
       {activeModal === 'grievance' && <GrievanceModal student={studentData} onClose={() => setActiveModal(null)} />}
 
-      {/* 3. PAYMENT FLOW MODALS */}
-      
-      {/* A. Exam Registration (Step 1: Select Subjects & Save) */}
+      {/* --- PAYMENT FLOW MODALS --- */}
       {activeModal === 'exam_reg' && (
           <ExamRegistration 
               student={studentData} 
               onBack={() => setActiveModal(null)}
-              // Note: We don't pay directly from here anymore, we save and tell user to go to Challan Gen
           />
       )}
-
-      {/* B. Tuition Fees (Step 1: Acknowledge Dues) */}
       {activeModal === 'tuition' && (
           <TuitionFees 
               student={studentData} 
               onBack={() => setActiveModal(null)} 
-              onProceedToPay={() => {
-                  setActiveModal('challan_gen'); // Redirect to Challan Hub
-              }}
+              onProceedToPay={() => setActiveModal('challan_gen')}
           />
       )}
-
-      {/* C. CHALLAN GENERATION HUB (The new smart component) */}
       {activeModal === 'challan_gen' && (
           <ChallanGenerationModal 
               student={studentData}
               onBack={() => setActiveModal(null)}
-              onProceedToPay={handlePaymentInitiated} // This sends data to ChallanManager
+              onProceedToPay={handlePaymentInitiated} 
           />
       )}
-
-      {/* 4. FULL PAGE VIEWS */}
 
       {/* HEADER */}
       <header className="flex justify-between items-end border-b-4 double border-terminal pb-2 mb-4 shrink-0 relative z-10">
@@ -218,8 +197,6 @@ export default function TerminalHome() {
       </header>
 
       <div className="flex flex-1 overflow-hidden relative z-10">
-        
-        {/* SIDEBAR */}
         {['home', 'login', 'admin_login'].includes(view) && (
           <aside className="w-72 border-r-2 border-terminal pt-5 flex flex-col gap-4 shrink-0">
             <button key="about" className="text-left text-2xl hover:bg-terminal hover:text-black px-2 transition-all">&gt; [ About Us ]</button>
@@ -230,26 +207,29 @@ export default function TerminalHome() {
         )}
 
         <main className="flex-1 p-8 text-2xl relative w-full">
-          
-          {/* LOGIN / HOME */}
           {view === 'home' && <div>{displayedText.map((line, i) => <div key={i} className="mb-2">{line}</div>)}</div>}
           {view === 'login' && <LoginPanel onBack={() => setView('home')} />}
           {view === 'admin_login' && <AdminLogin onBack={() => setView('home')} />}
           {view === 'admin_dashboard' && <AdminDashboard onLogout={handleLogout} />}
 
-          {/* MAIN DASHBOARD */}
+          {/* DASHBOARD */}
           {view === 'dashboard' && (
             <StudentDashboard 
                 student={studentData} 
                 onLogout={handleLogout} 
-                
                 onHostelClick={() => setView('hostel_status')}
                 onResultsClick={() => setView('exam_results')}
                 
-                // Routing Logic for Dashboard Buttons
+                // ROUTING LOGIC FIX
                 onOpenModal={(type) => {
-                    // Direct mapping for simple modals
-                    setActiveModal(type);
+                    if(type === 'exam_reg') setActiveModal('exam_reg');
+                    else if(type === 'tuition') setActiveModal('tuition');
+                    else if(type === 'challan_gen') setActiveModal('challan_gen');
+                    else if(type === 'pay_challan') {
+                        setPaymentContext(null); // Clear context for manual entry
+                        setView('challan_system');
+                    }
+                    else setActiveModal(type);
                 }}
                 
                 onDetailsClick={() => setActiveModal('details_3d')}
@@ -257,15 +237,15 @@ export default function TerminalHome() {
             />
           )}
 
-          {/* 5. CHALLAN MANAGER (The Payment Engine) */}
-          {view === 'challan_system' && paymentContext && (
+          {/* CHALLAN MANAGER (Search Mode when context is null) */}
+          {view === 'challan_system' && (
               <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md overflow-y-auto">
                   <ChallanManager 
                       student={studentData}
                       paymentContext={paymentContext}
                       onComplete={() => {
-                          fetchProfile(studentData.auth_user_id); // Refresh Data
-                          setView('dashboard'); // Return Home
+                          fetchProfile(studentData.auth_user_id); 
+                          setView('dashboard'); 
                       }}
                       onBack={() => setView('dashboard')}
                   />
@@ -273,21 +253,9 @@ export default function TerminalHome() {
           )}
 
           {/* SUB-PAGES */}
-          {view === 'exam_results' && (
-             <div className="absolute inset-0 z-50">
-                <ExamResults onBack={() => setView('dashboard')} student={studentData} />
-             </div>
-          )}
+          {view === 'exam_results' && <div className="absolute inset-0 z-50"><ExamResults onBack={() => setView('dashboard')} student={studentData} /></div>}
+          {view === 'hostel_status' && <HostelPanel student={studentData} onBack={() => setView('dashboard')} onBookNow={() => setView('booking_3d')} />}
 
-          {view === 'hostel_status' && (
-            <HostelPanel 
-                student={studentData}
-                onBack={() => setView('dashboard')}
-                onBookNow={() => setView('booking_3d')} 
-            />
-          )}
-
-          {/* HOSTEL 3D BOOKING (Direct to Payment) */}
           {view === 'booking_3d' && (
              <div className="absolute inset-0 pointer-events-auto">
                 <Scene3D 
@@ -297,26 +265,22 @@ export default function TerminalHome() {
                             type: 'HOSTEL',
                             amount: 15000, 
                             metadata: { room_id: room.id, block_name: room.block_name },
-                            autoRedirect: true // Skip generation, go to payment directly
+                            autoRedirect: true 
                         });
                     }}
                 />
-                
                 <div className="absolute top-4 left-4 z-50 animate-slideIn pointer-events-auto">
-                    <button onClick={() => setView('hostel_status')} className="bg-black/80 text-terminal border border-terminal px-4 py-2 hover:bg-terminal hover:text-black font-vt323 text-xl">
-                        [ BACK ]
-                    </button>
+                    <button onClick={() => setView('hostel_status')} className="bg-black/80 text-terminal border border-terminal px-4 py-2 hover:bg-terminal hover:text-black font-vt323 text-xl">[ BACK ]</button>
                 </div>
              </div>
           )}
-
         </main>
       </div>
     </CRTWrapper>
   );
 }
 
-// --- LOGIN COMPONENTS ---
+// Login Components remain unchanged...
 function LoginPanel({ onBack }) {
   const [regNo, setRegNo] = useState('');
   const [password, setPassword] = useState('');
@@ -327,18 +291,11 @@ function LoginPanel({ onBack }) {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
       const email = `${regNo}@au.edu.in`; 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-
     } catch (err) {
-      console.error(err);
       setError('ACCESS DENIED: INVALID CREDENTIALS');
       setLoading(false);
     }
@@ -346,28 +303,14 @@ function LoginPanel({ onBack }) {
 
   return (
     <div className="border-2 border-dashed border-terminal p-8 max-w-lg mt-8 relative animate-[slideIn_0.5s_ease-out] bg-black/80 mx-auto">
-      <div className="absolute -top-3 -left-2 bg-black text-terminal px-1">+</div>
-      <div className="absolute -top-3 -right-2 bg-black text-terminal px-1">+</div>
-      <div className="absolute -bottom-3 -left-2 bg-black text-terminal px-1">+</div>
-      <div className="absolute -bottom-3 -right-2 bg-black text-terminal px-1">+</div>
-
-      <div className="border-b border-dashed border-terminal mb-6 pb-2 font-bold tracking-widest text-center">
-        SYSTEM_98 :: SECURE LOGIN
-      </div>
-
+      <div className="border-b border-dashed border-terminal mb-6 pb-2 font-bold tracking-widest text-center">SYSTEM_98 :: SECURE LOGIN</div>
       <form className="space-y-6" onSubmit={handleSubmit}>
         <RetroInput label="REG NO" value={regNo} onChange={(e) => setRegNo(e.target.value)} />
         <RetroInput label="PASSWORD" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-
         {error && <div className="text-red-500 text-center animate-pulse">{error}</div>}
-
         <div className="flex justify-center gap-6 mt-8">
-          <button type="submit" disabled={loading} className="border border-terminal px-6 py-2 hover:bg-terminal hover:text-black transition-all font-bold disabled:opacity-50">
-            {loading ? '[ AUTHENTICATING... ]' : '[ LOGIN ]'}
-          </button>
-          <button type="button" onClick={onBack} className="border border-terminal px-6 py-2 hover:bg-red-900/50 hover:text-red-400 transition-all opacity-80">
-            [ CANCEL ]
-          </button>
+          <button type="submit" disabled={loading} className="border border-terminal px-6 py-2 hover:bg-terminal hover:text-black transition-all font-bold disabled:opacity-50">{loading ? '[ AUTHENTICATING... ]' : '[ LOGIN ]'}</button>
+          <button type="button" onClick={onBack} className="border border-terminal px-6 py-2 hover:bg-red-900/50 hover:text-red-400 transition-all opacity-80">[ CANCEL ]</button>
         </div>
       </form>
     </div>
